@@ -10,7 +10,7 @@ This is Phase 3 (Core Logic), which handles the background service worker, short
    - When requested, parse the current URL or DOM to extract the Notion Page ID (the last 32 characters of a Notion URL, formatted as 8-4-4-4-12 to be a valid UUID).
    - Return the extracted Page ID to the background script.
 2. **page-lock/config.json** (Config):
-   - Provide a regex pattern to extract the Page ID from `https://www.notion.so/...`.
+   - Provide a regex pattern to extract the Page ID from `https://app.notion.com/...`.
 3. **background.js** (Service Worker):
    - Listen for the `toggle-lock` command via `chrome.commands.onCommand`.
    - When triggered, send a message to the active tab to request the Page ID from the content script (use the `safe-send-message` approach if possible, or just standard `chrome.tabs.sendMessage`).
