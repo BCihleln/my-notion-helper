@@ -34,49 +34,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     } else {
       sendResponse({ success: false, error: 'Could not find Page ID in URL' });
     }
-  } else if (request.action === 'show-toast') {
-    showToast(request.message);
-    sendResponse({ success: true });
   }
   return true;
 });
-
-async function showToast(message) {
-  let container = document.getElementById('notion-extension-toast-container');
-  if (!container) {
-    container = document.createElement('div');
-    container.id = 'notion-extension-toast-container';
-    try {
-      const response = await fetch(chrome.runtime.getURL('utils/toast.html'));
-      container.innerHTML = await response.text();
-      document.body.appendChild(container);
-    } catch (e) {
-      console.error('Failed to load toast.html', e);
-      return;
-    }
-  }
-
-  const toast = document.getElementById('custom-notion-toast');
-  if (!toast) return;
-
-  toast.innerText = message;
-
-  toast.style.transition = 'none';
-  toast.style.opacity = '0';
-  toast.style.transform = 'translateX(-50%) translateY(10px)';
-
-  void toast.offsetWidth; // Trigger reflow
-
-  toast.style.transition = 'opacity 0.2s ease-out, transform 0.2s ease-out';
-  toast.style.opacity = '1';
-  toast.style.transform = 'translateX(-50%) translateY(0)';
-
-  if (window._notionToastTimeout) {
-    clearTimeout(window._notionToastTimeout);
-  }
-
-  window._notionToastTimeout = setTimeout(() => {
-    toast.style.opacity = '0';
-    toast.style.transform = 'translateX(-50%) translateY(10px)';
-  }, 3000);
-}

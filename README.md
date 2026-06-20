@@ -21,9 +21,9 @@ This extension follows a modular Manifest V3 design:
 2. **Popup Interface (`popup.html`, `popup.js`, `popup.css`)**: 
    - A clean UI for users to input and securely save their Notion Integration Access Token (`chrome.storage.local`).
    - A toggle switch to turn the Page Lock module on or off.
-3. **Content Script (`page-lock/main.js`)**: 
-   - Parses the active Notion URL to accurately extract the 32-character ID and formats it into standard UUID format (8-4-4-4-12) for API calls.
-   - Handles the injection and display of custom toast notifications (`utils/toast.html`).
+3. **Content Scripts (`page-lock/main.js` & `toast/main.js`)**: 
+   - `page-lock/main.js`: Parses the active Notion URL to accurately extract the 32-character ID and formats it into standard UUID format (8-4-4-4-12) for API calls.
+   - `toast/main.js`: Handles the injection and display of custom toast notifications (`toast/toast.html`).
 
 ## Installation & Setup
 

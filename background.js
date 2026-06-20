@@ -11,7 +11,8 @@ async function registerContentScript() {
           "*://*.notion.so/*",
           "*://*.notion.site/*"
         ],
-        js: ["page-lock/main.js"],
+        js: ["toast/main.js", "page-lock/main.js"],
+        css: ["toast/styles.css"],
         runAt: "document_idle"
       }]);
       console.log('Content script registered.');

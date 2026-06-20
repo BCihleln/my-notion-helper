@@ -29,7 +29,8 @@
     {
       "resources": [
         "page-lock/config.json",
-        "utils/toast.html"
+        "toast/toast.html",
+        "toast/config.json"
       ],
       "matches": [
         "*://app.notion.com/*",
