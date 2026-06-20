@@ -1,0 +1,52 @@
+{
+  "manifest_version": 3,
+  "name": "Notion Page Lock Toggle",
+  "version": "1.0.0",
+  "description": "Toggle Notion page lock status quickly.",
+  "permissions": [
+    "scripting",
+    "tabs",
+    "storage"
+  ],
+  "host_permissions": [
+    "*://*.notion.so/*"
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "options_page": "options.html",
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.notion.so/*"
+      ],
+      "js": [
+        "page-lock/main.js"
+      ]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "page-lock/config.json"
+      ],
+      "matches": [
+        "*://*.notion.so/*"
+      ]
+    }
+  ],
+  "commands": {
+    "toggle-lock": {
+      "suggested_key": {
+        "default": "Ctrl+L",
+        "mac": "MacCtrl+L"
+      },
+      "description": "Toggle Notion page lock"
+    }
+  }
+}
