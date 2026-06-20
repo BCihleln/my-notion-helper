@@ -1,4 +1,4 @@
 {
-  "urlPattern": "https://www.notion.so/.*-([a-f0-9]{32})(?:\\?.*)?$",
+  "urlPattern": "https://app.notion.com/.*-([a-f0-9]{32})(?:\\?.*)?$",
   "description": "Regex pattern to match Notion URLs and extract the 32-character raw page ID."
 }

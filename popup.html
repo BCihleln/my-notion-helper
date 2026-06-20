@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>My Notion Helper</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Token Setup View -->
+    <div id="token-view" class="view" style="display: none;">
+      <h2>Notion API Setup</h2>
+      <p class="subtitle">Please enter your Notion Internal Integration Token to get started.</p>
+      <input type="password" id="token-input" placeholder="secret_...">
+      <button id="save-token">Save Token</button>
+      <div id="token-status" class="status-msg"></div>
+    </div>
+
+    <!-- Modules View -->
+    <div id="modules-view" class="view" style="display: none;">
+      <h2>Modules</h2>
+      
+      <div class="module-card">
+        <div class="module-info">
+          <div class="module-name">Notion Page Lock</div>
+          <div class="module-desc">Quickly toggle Notion page lock status (Alt+L)</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggle-page-lock">
+          <span class="slider round"></span>
+        </label>
+      </div>
+
+      <!-- Reset/Edit Token -->
+      <div class="footer">
+        <button id="edit-token-btn" class="text-btn">Edit Token</button>
+      </div>
+    </div>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>
