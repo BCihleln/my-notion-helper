@@ -126,17 +126,20 @@ chrome.commands.onCommand.addListener(async (command) => {
 
       const headers = {
         'Authorization': `Bearer ${notionToken}`,
-        'Notion-Version': '2022-06-28',
+        'Notion-Version': '2026-03-11',
         'Content-Type': 'application/json'
       };
 
+
       let isDatabase = false;
+      let pageData = null;
+
+      // Step 1: Try pages endpoint first
       let getResponse = await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
         method: 'GET',
         headers
       });
 
-      let pageData = null;
 
       if (getResponse.ok) {
         pageData = await getResponse.json();
@@ -155,6 +158,7 @@ chrome.commands.onCommand.addListener(async (command) => {
           }
         }
       } else {
+        // Step 2: pages endpoint failed, try databases endpoint
         getResponse = await fetch(`https://api.notion.com/v1/databases/${pageId}`, {
           method: 'GET',
           headers
