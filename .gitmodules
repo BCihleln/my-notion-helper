@@ -1,0 +1,4 @@
+[submodule "chrome-extension-skill"]
+	path = .agents/skills/chrome-extension
+	url = https://github.com/BCihleln/chrome-extension-agent-skill
+	branch = master
