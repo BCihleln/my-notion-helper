@@ -1,4 +1,5 @@
 import { getCurrentTab, isPageLockEnabled } from './utils.js';
+import { togglePageLockState } from './page-lock/toggle.js';
 
 const SCRIPT_ID = 'page-lock-script';
 
@@ -88,46 +89,13 @@ chrome.commands.onCommand.addListener(async (command) => {
     }
 
     const { pageId } = response;
-    const headers = {
-      'Authorization': `Bearer ${notionToken}`,
-      'Notion-Version': '2026-03-11',
-      'Content-Type': 'application/json'
-    };
-
-    // Try fetching as page, fallback to database
-    let res = await fetch(`https://api.notion.com/v1/pages/${pageId}`, { method: 'GET', headers });
-    let isDatabase = false;
-    let data = null;
-
-    if (res.ok) {
-      data = await res.json();
-      if (data.object === 'database') {
-        isDatabase = true;
-        res = await fetch(`https://api.notion.com/v1/databases/${pageId}`, { method: 'GET', headers });
-        if (res.ok) data = await res.json();
-      }
-    } else {
-      res = await fetch(`https://api.notion.com/v1/databases/${pageId}`, { method: 'GET', headers });
-      if (res.ok) {
-        isDatabase = true;
-        data = await res.json();
-      }
+    
+    try {
+      const newLockState = await togglePageLockState(pageId, notionToken);
+      await showToast(`Page is now ${newLockState ? 'locked' : 'unlocked'}.`, tab.id);
+    } catch (apiError) {
+      return showToast(`API Error: ${apiError.message}`, tab.id);
     }
-
-    if (!res.ok || !data) {
-      return showToast('API Error: Failed to fetch page/database. Is it shared with your integration?', tab.id);
-    }
-
-    const endpoint = isDatabase ? `https://api.notion.com/v1/databases/${pageId}` : `https://api.notion.com/v1/pages/${pageId}`;
-    const patchRes = await fetch(endpoint, {
-      method: 'PATCH',
-      headers,
-      body: JSON.stringify({ is_locked: !data.is_locked })
-    });
-
-    if (!patchRes.ok) return showToast(`API Error: ${patchRes.statusText}`, tab.id);
-
-    await showToast(`Page is now ${data.is_locked ? 'unlocked' : 'locked'}.`, tab.id);
   } catch (error) {
     console.error('Error:', error);
     await showToast('Error: An unexpected error occurred. Check console.');
