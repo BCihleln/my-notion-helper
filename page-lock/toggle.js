@@ -1,7 +1,7 @@
-import { getNotionEntity, updateNotionEntity } from '../notion/main.js';
+import { getNotionEntity, updateNotionEntity, extractNotionIdFromUrl } from '../notion/main.js';
 import { getCurrentTab, showToast } from '../utils.js';
 
-export async function getModulesState() {
+async function getModulesState() {
   const result = await chrome.storage.local.get(['modules']);
   return result.modules || {};
 }
@@ -11,7 +11,7 @@ export async function isPageLockEnabled() {
   return modules.pageLock !== false; // default to true
 }
 
-export async function togglePageLockState(pageId, notionToken) {
+async function togglePageLockState(pageId, notionToken) {
   const entity = await getNotionEntity(pageId, notionToken);
   const newLockState = !entity.data.is_locked;
   
@@ -35,16 +35,19 @@ export async function handleToggleLockCommand() {
 
     let response;
     try {
-      response = await chrome.tabs.sendMessage(tab.id, { action: 'get-page-id' });
+      response = await chrome.tabs.sendMessage(tab.id, { action: 'get-page-url' });
     } catch (err) {
       return showToast('Content Script Not Ready: Please refresh this Notion page.', tab.id);
     }
 
-    if (!response?.success) {
-      return showToast('Page ID Not Found: ' + (response?.error || 'Could not detect Notion Page ID.'), tab.id);
+    if (!response?.success || !response.url) {
+      return showToast('Failed to get page URL from content script.', tab.id);
     }
 
-    const { pageId } = response;
+    const pageId = extractNotionIdFromUrl(response.url);
+    if (!pageId) {
+      return showToast('Page ID Not Found: Could not detect Notion Page ID from URL.', tab.id);
+    }
     
     try {
       const newLockState = await togglePageLockState(pageId, notionToken);

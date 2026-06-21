@@ -57,3 +57,22 @@ export async function updateNotionEntity(id, type, properties, token) {
 
   return await patchRes.json();
 }
+
+export function extractNotionIdFromUrl(url) {
+  try {
+    const urlObj = new URL(url);
+    // Check p= param first (peek-view), fallback to path
+    const targetStr = urlObj.searchParams.get('p') || urlObj.pathname;
+    
+    // Look for 32 hex chars (with or without dashes)
+    const match = targetStr.match(/([a-f0-9]{8}-?[a-f0-9]{4}-?[a-f0-9]{4}-?[a-f0-9]{4}-?[a-f0-9]{12})/i);
+    
+    if (match) {
+      const rawId = match[0].replace(/-/g, '');
+      return `${rawId.slice(0, 8)}-${rawId.slice(8, 12)}-${rawId.slice(12, 16)}-${rawId.slice(16, 20)}-${rawId.slice(20)}`;
+    }
+  } catch (e) {
+    console.error('Error parsing Notion URL:', e);
+  }
+  return null;
+}
