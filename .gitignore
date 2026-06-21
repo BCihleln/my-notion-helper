@@ -27,4 +27,4 @@ $RECYCLE.BIN/
 
 ### Project
 .agents/plans/*
-!.agents/plans/done
+!.agents/plans/4_done
