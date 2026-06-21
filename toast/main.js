@@ -1,13 +1,4 @@
-let toastConfig = { durationMs: 3000 };
-
-async function loadToastConfig() {
-  try {
-    const response = await fetch(chrome.runtime.getURL('toast/config.json'));
-    toastConfig = await response.json();
-  } catch (e) {
-    console.error('Failed to load toast config', e);
-  }
-}
+const toastConfig = { durationMs: 3000 };
 
 async function showToast(message) {
   let container = document.getElementById('notion-extension-toast-container');

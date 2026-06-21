@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "my-notion-helper",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Toggle Notion page lock status quickly.",
   "permissions": [
     "scripting",
@@ -28,9 +28,7 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "page-lock/config.json",
-        "toast/toast.html",
-        "toast/config.json"
+        "toast/toast.html"
       ],
       "matches": [
         "*://app.notion.com/*",
