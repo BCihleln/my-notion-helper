@@ -1,82 +1,54 @@
+import { getCurrentTab, isPageLockEnabled } from './utils.js';
+
 const SCRIPT_ID = 'page-lock-script';
 
-async function registerContentScript() {
+async function updateScriptState(isEnabled) {
   try {
     const scripts = await chrome.scripting.getRegisteredContentScripts({ ids: [SCRIPT_ID] });
-    if (scripts.length === 0) {
+    if (isEnabled && scripts.length === 0) {
       await chrome.scripting.registerContentScripts([{
         id: SCRIPT_ID,
-        matches: [
-          "*://app.notion.com/*",
-          "*://*.notion.so/*",
-          "*://*.notion.site/*"
-        ],
+        matches: ["*://app.notion.com/*", "*://*.notion.so/*", "*://*.notion.site/*"],
         js: ["toast/main.js", "page-lock/main.js"],
         css: ["toast/styles.css"],
         runAt: "document_idle"
       }]);
       console.log('Content script registered.');
-    }
-  } catch (err) {
-    console.error('Failed to register content script:', err);
-  }
-}
-
-async function unregisterContentScript() {
-  try {
-    const scripts = await chrome.scripting.getRegisteredContentScripts({ ids: [SCRIPT_ID] });
-    if (scripts.length > 0) {
+    } else if (!isEnabled && scripts.length > 0) {
       await chrome.scripting.unregisterContentScripts({ ids: [SCRIPT_ID] });
       console.log('Content script unregistered.');
     }
   } catch (err) {
-    console.error('Failed to unregister content script:', err);
+    console.error('Failed to update content script state:', err);
   }
 }
 
-async function updateScriptState(isEnabled) {
-  if (isEnabled) {
-    await registerContentScript();
-  } else {
-    await unregisterContentScript();
-  }
+async function initExtension() {
+  const isEnabled = await isPageLockEnabled();
+  await updateScriptState(isEnabled);
 }
 
 // Init on installed/startup
-chrome.runtime.onInstalled.addListener(async () => {
-  const result = await chrome.storage.local.get(['modules']);
-  const isEnabled = result.modules ? result.modules.pageLock !== false : true;
-  await updateScriptState(isEnabled);
-});
-
-chrome.runtime.onStartup.addListener(async () => {
-  const result = await chrome.storage.local.get(['modules']);
-  const isEnabled = result.modules ? result.modules.pageLock !== false : true;
-  await updateScriptState(isEnabled);
-});
+chrome.runtime.onInstalled.addListener(initExtension);
+chrome.runtime.onStartup.addListener(initExtension);
 
 // Watch for changes
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' && changes.modules) {
-    const newModules = changes.modules.newValue || {};
-    const isEnabled = newModules.pageLock !== false;
+    const isEnabled = changes.modules.newValue?.pageLock !== false;
     updateScriptState(isEnabled);
   }
 });
 
 async function showToast(message, tabId = null) {
   if (!tabId) {
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tabs.length > 0) {
-      tabId = tabs[0].id;
-    } else {
-      return;
-    }
+    const tab = await getCurrentTab();
+    if (!tab) return;
+    tabId = tab.id;
   }
   try {
     await chrome.tabs.sendMessage(tabId, { action: 'show-toast', message });
   } catch (err) {
-    // Fallback if content script is missing
     try {
       await chrome.scripting.executeScript({
         target: { tabId: tabId },
@@ -90,110 +62,74 @@ async function showToast(message, tabId = null) {
 }
 
 chrome.commands.onCommand.addListener(async (command) => {
-  if (command === 'toggle-lock') {
-    try {
-      const result = await chrome.storage.local.get(['modules', 'notionToken']);
-      const isEnabled = result.modules ? result.modules.pageLock !== false : true;
-      if (!isEnabled) {
-        console.log('Page lock module is disabled. Ignoring shortcut.');
-        return;
-      }
+  if (command !== 'toggle-lock') return;
 
-      const notionToken = result.notionToken;
-      if (!notionToken) {
-        await showToast('Token Missing: Please set your Notion API Token in the extension popup.');
-        return;
-      }
-
-      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-      const tab = tabs[0];
-      if (!tab) return;
-
-      let response;
-      try {
-        response = await chrome.tabs.sendMessage(tab.id, { action: 'get-page-id' });
-      } catch (err) {
-        await showToast('Content Script Not Ready: Please refresh this Notion page to enable the lock shortcut.', tab.id);
-        return;
-      }
-
-      if (!response || !response.success) {
-        await showToast('Page ID Not Found: ' + (response?.error || 'Could not detect Notion Page ID from URL.'), tab.id);
-        return;
-      }
-
-      const pageId = response.pageId;
-
-      const headers = {
-        'Authorization': `Bearer ${notionToken}`,
-        'Notion-Version': '2026-03-11',
-        'Content-Type': 'application/json'
-      };
-
-
-      let isDatabase = false;
-      let pageData = null;
-
-      // Step 1: Try pages endpoint first
-      let getResponse = await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
-        method: 'GET',
-        headers
-      });
-
-
-      if (getResponse.ok) {
-        pageData = await getResponse.json();
-        if (pageData.object === 'database') {
-          isDatabase = true;
-          // Re-fetch from databases endpoint to ensure we get database-specific properties like is_locked
-          getResponse = await fetch(`https://api.notion.com/v1/databases/${pageId}`, {
-            method: 'GET',
-            headers
-          });
-          if (getResponse.ok) {
-            pageData = await getResponse.json();
-          } else {
-            await showToast('API Error: Failed to fetch database details.', tab.id);
-            return;
-          }
-        }
-      } else {
-        // Step 2: pages endpoint failed, try databases endpoint
-        getResponse = await fetch(`https://api.notion.com/v1/databases/${pageId}`, {
-          method: 'GET',
-          headers
-        });
-        
-        if (getResponse.ok) {
-          isDatabase = true;
-          pageData = await getResponse.json();
-        } else {
-          await showToast('API Error: Failed to fetch page/database. Is it shared with your integration?', tab.id);
-          return;
-        }
-      }
-
-      const currentLockedState = pageData.is_locked === true;
-
-      const endpoint = isDatabase ? `https://api.notion.com/v1/databases/${pageId}` : `https://api.notion.com/v1/pages/${pageId}`;
-      const patchResponse = await fetch(endpoint, {
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify({
-          is_locked: !currentLockedState
-        })
-      });
-
-      if (!patchResponse.ok) {
-        await showToast(`API Error: Failed to update page: ${patchResponse.statusText}`, tab.id);
-        return;
-      }
-
-      await showToast(`Page is now ${!currentLockedState ? 'locked' : 'unlocked'}.`, tab.id);
-      
-    } catch (error) {
-      console.error('Error in toggle-lock command:', error);
-      await showToast('Error: An unexpected error occurred. Check console for details.');
+  try {
+    if (!(await isPageLockEnabled())) {
+      console.log('Page lock module is disabled.');
+      return;
     }
+
+    const { notionToken } = await chrome.storage.local.get(['notionToken']);
+    if (!notionToken) return showToast('Token Missing: Please set your Notion API Token in the extension popup.');
+
+    const tab = await getCurrentTab();
+    if (!tab) return;
+
+    let response;
+    try {
+      response = await chrome.tabs.sendMessage(tab.id, { action: 'get-page-id' });
+    } catch (err) {
+      return showToast('Content Script Not Ready: Please refresh this Notion page.', tab.id);
+    }
+
+    if (!response?.success) {
+      return showToast('Page ID Not Found: ' + (response?.error || 'Could not detect Notion Page ID.'), tab.id);
+    }
+
+    const { pageId } = response;
+    const headers = {
+      'Authorization': `Bearer ${notionToken}`,
+      'Notion-Version': '2026-03-11',
+      'Content-Type': 'application/json'
+    };
+
+    // Try fetching as page, fallback to database
+    let res = await fetch(`https://api.notion.com/v1/pages/${pageId}`, { method: 'GET', headers });
+    let isDatabase = false;
+    let data = null;
+
+    if (res.ok) {
+      data = await res.json();
+      if (data.object === 'database') {
+        isDatabase = true;
+        res = await fetch(`https://api.notion.com/v1/databases/${pageId}`, { method: 'GET', headers });
+        if (res.ok) data = await res.json();
+      }
+    } else {
+      res = await fetch(`https://api.notion.com/v1/databases/${pageId}`, { method: 'GET', headers });
+      if (res.ok) {
+        isDatabase = true;
+        data = await res.json();
+      }
+    }
+
+    if (!res.ok || !data) {
+      return showToast('API Error: Failed to fetch page/database. Is it shared with your integration?', tab.id);
+    }
+
+    const endpoint = isDatabase ? `https://api.notion.com/v1/databases/${pageId}` : `https://api.notion.com/v1/pages/${pageId}`;
+    const patchRes = await fetch(endpoint, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ is_locked: !data.is_locked })
+    });
+
+    if (!patchRes.ok) return showToast(`API Error: ${patchRes.statusText}`, tab.id);
+
+    await showToast(`Page is now ${data.is_locked ? 'unlocked' : 'locked'}.`, tab.id);
+  } catch (error) {
+    console.error('Error:', error);
+    await showToast('Error: An unexpected error occurred. Check console.');
   }
 });
