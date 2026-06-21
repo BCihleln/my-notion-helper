@@ -1,5 +1,5 @@
-import { getCurrentTab, isPageLockEnabled } from './utils.js';
-import { togglePageLockState } from './page-lock/toggle.js';
+import { isPageLockEnabled } from './utils.js';
+import { handleToggleLockCommand } from './page-lock/toggle.js';
 
 const SCRIPT_ID = 'page-lock-script';
 
@@ -41,63 +41,8 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
 });
 
-async function showToast(message, tabId = null) {
-  if (!tabId) {
-    const tab = await getCurrentTab();
-    if (!tab) return;
-    tabId = tab.id;
-  }
-  try {
-    await chrome.tabs.sendMessage(tabId, { action: 'show-toast', message });
-  } catch (err) {
-    try {
-      await chrome.scripting.executeScript({
-        target: { tabId: tabId },
-        func: (msg) => alert(msg),
-        args: [message]
-      });
-    } catch (e) {
-      console.error('Failed to show fallback alert', e);
-    }
-  }
-}
-
-chrome.commands.onCommand.addListener(async (command) => {
-  if (command !== 'toggle-lock') return;
-
-  try {
-    if (!(await isPageLockEnabled())) {
-      console.log('Page lock module is disabled.');
-      return;
-    }
-
-    const { notionToken } = await chrome.storage.local.get(['notionToken']);
-    if (!notionToken) return showToast('Token Missing: Please set your Notion API Token in the extension popup.');
-
-    const tab = await getCurrentTab();
-    if (!tab) return;
-
-    let response;
-    try {
-      response = await chrome.tabs.sendMessage(tab.id, { action: 'get-page-id' });
-    } catch (err) {
-      return showToast('Content Script Not Ready: Please refresh this Notion page.', tab.id);
-    }
-
-    if (!response?.success) {
-      return showToast('Page ID Not Found: ' + (response?.error || 'Could not detect Notion Page ID.'), tab.id);
-    }
-
-    const { pageId } = response;
-    
-    try {
-      const newLockState = await togglePageLockState(pageId, notionToken);
-      await showToast(`Page is now ${newLockState ? 'locked' : 'unlocked'}.`, tab.id);
-    } catch (apiError) {
-      return showToast(`API Error: ${apiError.message}`, tab.id);
-    }
-  } catch (error) {
-    console.error('Error:', error);
-    await showToast('Error: An unexpected error occurred. Check console.');
+chrome.commands.onCommand.addListener((command) => {
+  if (command === 'toggle-lock') {
+    handleToggleLockCommand();
   }
 });
