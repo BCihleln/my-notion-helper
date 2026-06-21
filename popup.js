@@ -1,4 +1,4 @@
-import { isPageLockEnabled } from './utils.js';
+import { isPageLockEnabled } from './page-lock/toggle.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   const views = {

@@ -1,5 +1,4 @@
-import { isPageLockEnabled } from './utils.js';
-import { handleToggleLockCommand } from './page-lock/toggle.js';
+import { isPageLockEnabled, handleToggleLockCommand } from './page-lock/toggle.js';
 
 const SCRIPT_ID = 'page-lock-script';
 

@@ -1,5 +1,15 @@
 import { getNotionEntity, updateNotionEntity } from '../notion/main.js';
-import { getCurrentTab, isPageLockEnabled, showToast } from '../utils.js';
+import { getCurrentTab, showToast } from '../utils.js';
+
+export async function getModulesState() {
+  const result = await chrome.storage.local.get(['modules']);
+  return result.modules || {};
+}
+
+export async function isPageLockEnabled() {
+  const modules = await getModulesState();
+  return modules.pageLock !== false; // default to true
+}
 
 export async function togglePageLockState(pageId, notionToken) {
   const entity = await getNotionEntity(pageId, notionToken);
